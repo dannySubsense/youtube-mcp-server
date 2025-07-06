@@ -37,6 +37,7 @@ A comprehensive Model Context Protocol (MCP) server that provides real-time YouT
 - Python 3.8+
 - YouTube Data API v3 key
 - MCP-compatible client (Claude Desktop, Cursor, etc.)
+- youtube-transcript-api (for transcript extraction functionality)
 
 ## 🛠️ Installation & Setup
 
