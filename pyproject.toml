@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "youtube-mcp-server"
 version = "1.0.0"
-description = "A comprehensive Model Context Protocol server for YouTube Data API access with intelligent content evaluation"
+description = "A comprehensive Model Context Protocol server for YouTube Data API access with 14 functions including transcript extraction and intelligent content evaluation"
 authors = [
     {name = "YouTube MCP Server Contributors"},
 ]
@@ -31,6 +31,7 @@ requires-python = ">=3.8"
 dependencies = [
     "mcp[cli]>=1.4.0",
     "httpx>=0.25.0",
+    "youtube-transcript-api>=0.6.0",
 ]
 
 [project.optional-dependencies]

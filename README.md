@@ -4,7 +4,7 @@ A comprehensive Model Context Protocol (MCP) server that provides real-time YouT
 
 ## 🚀 Features
 
-### 13 Complete Functions
+### 14 Complete Functions
 
 1. **`get_video_details`** - Get comprehensive video information including title, description, statistics, and metadata
 2. **`get_playlist_details`** - Retrieve playlist information and metadata
@@ -19,6 +19,7 @@ A comprehensive Model Context Protocol (MCP) server that provides real-time YouT
 11. **`get_channel_playlists`** - List playlists from a YouTube channel
 12. **`get_video_caption_info`** - Get available caption/transcript information
 13. **`evaluate_video_for_knowledge_base`** - Intelligent content evaluation with freshness scoring for knowledge base curation
+14. **`get_video_transcript`** - Extract actual transcript content from YouTube videos
 
 ### Key Capabilities
 
@@ -76,7 +77,7 @@ youtube_api_key: "YOUR_YOUTUBE_API_KEY_HERE"
 python test_server.py
 ```
 
-This will run comprehensive tests on all 13 functions to ensure everything is working correctly.
+This will run comprehensive tests on all 14 functions to ensure everything is working correctly.
 
 ## 🔧 Integration Guides
 
@@ -203,6 +204,23 @@ evaluation = await evaluate_video_for_knowledge_base("Z6nkEZyS9nA")
 # 🚀 Tech Currency: React 2025 content - framework evolves rapidly
 ```
 
+### Transcript Extraction (New!)
+```python
+# Extract full transcript content from a video
+transcript = await get_video_transcript("Z6nkEZyS9nA")
+
+# Also works with URLs and different languages
+transcript_spanish = await get_video_transcript(
+    "https://www.youtube.com/watch?v=Z6nkEZyS9nA", 
+    language="es"
+)
+
+# Example output:
+# 📝 Full Transcript: [Complete video transcript text]
+# ⏰ Timestamped Segments: [00:15] Welcome to this tutorial...
+# Word Count: ~2,847 words
+```
+
 ### Engagement Analysis
 
 ```python
@@ -230,6 +248,7 @@ comments = await get_video_comments("dQw4w9WgXcQ", max_results=10, order="releva
 | `get_channel_playlists`             | Channel playlists          | All public playlists                         |
 | `get_video_caption_info`            | Caption availability       | Languages, manual vs auto                    |
 | `evaluate_video_for_knowledge_base` | Content evaluation         | **Smart freshness scoring for tech content** |
+| `get_video_transcript`              | Extract transcript content | **Full text extraction, timestamps, multilingual** |
 
 ## 🔥 Special Feature: Intelligent Content Evaluation
 
@@ -286,7 +305,7 @@ Run the comprehensive test suite:
 python test_server.py
 ```
 
-This tests all 13 functions with real YouTube content and provides detailed output.
+This tests all 14 functions with real YouTube content and provides detailed output.
 
 ## 🚨 Security Notes
 

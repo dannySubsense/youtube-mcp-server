@@ -14,6 +14,16 @@ from urllib.parse import parse_qs, urlparse
 
 import httpx
 from mcp.server.fastmcp import FastMCP
+# YouTube transcript API imports (optional dependency)
+try:
+    from youtube_transcript_api import YouTubeTranscriptApi
+    from youtube_transcript_api._errors import TranscriptsDisabled, NoTranscriptFound
+    TRANSCRIPT_API_AVAILABLE = True
+except ImportError:
+    TRANSCRIPT_API_AVAILABLE = False
+    YouTubeTranscriptApi = None
+    TranscriptsDisabled = None
+    NoTranscriptFound = None
 
 # Initialize the MCP server
 mcp = FastMCP("YouTube Data Server")
@@ -1499,6 +1509,156 @@ Note: This evaluation is based on video metadata only. Your YouTube Agent app ca
     except Exception as e:
         return f"Error evaluating video for knowledge base: {str(e)}"
 
+@mcp.tool()
+async def get_video_transcript(video_input: str, language: str = "en") -> str:
+    """
+    Extract actual transcript content from a YouTube video.
+    
+    Args:
+        video_input: YouTube video URL or video ID
+        language: Language code for transcript (default: en)
+        
+    Returns:
+        Formatted string with full transcript content
+    """
+    video_id = get_video_id_from_url(video_input)
+    if not video_id:
+        return f"Error: Could not extract video ID from '{video_input}'. Please provide a valid YouTube URL or 11-character video ID."
+    
+    # Check library availability and provide installation guidance
+    if not TRANSCRIPT_API_AVAILABLE:
+        return f"""YouTube Video Transcript - Installation Required:
+
+Video ID: {video_id}
+Status: ❌ Missing Dependency
+
+The 'youtube-transcript-api' library is required for transcript extraction.
+
+🔧 INSTALLATION COMMAND:
+pip install youtube-transcript-api
+
+After installation:
+1. Restart Claude Desktop completely
+2. Test this function again
+
+Alternative: Use get_video_caption_info() for caption metadata only.
+
+Video URL: https://www.youtube.com/watch?v={video_id}
+
+Note: Once installed, this function will extract full transcript content with timestamps."""
+    
+    # Library is available - proceed with transcript extraction
+    try:
+        # Get video title for context
+        try:
+            video_data = await make_youtube_api_request("videos", {
+                "part": "snippet",
+                "id": video_id
+            })
+            video_title = video_data["items"][0]["snippet"]["title"] if video_data.get("items") else "Unknown Video"
+        except:
+            video_title = "Unknown Video"
+        
+        # Try to get transcript in requested language
+        transcript = None
+        try:
+            transcript = YouTubeTranscriptApi.get_transcript(video_id, languages=[language])
+        except:
+            # Fallback to English
+            try:
+                transcript_list = YouTubeTranscriptApi.list_transcripts(video_id)
+                transcript = transcript_list.find_transcript(['en']).fetch()
+                language = 'en'
+            except:
+                # Try any available transcript
+                try:
+                    available_transcripts = YouTubeTranscriptApi.list_transcripts(video_id)
+                    first_transcript = next(iter(available_transcripts))
+                    transcript = first_transcript.fetch()
+                    language = first_transcript.language_code
+                except:
+                    return f"""YouTube Video Transcript - No Transcripts Available:
+
+Video: {video_title}
+Video ID: {video_id}
+
+❌ No transcripts found for this video.
+
+Possible reasons:
+• Video owner has disabled captions
+• Video is too new (captions not yet generated)
+• Video is restricted in your region
+• Video is private or deleted
+
+Try: Use get_video_caption_info() to check caption availability.
+
+Video URL: https://www.youtube.com/watch?v={video_id}"""
+        
+        if not transcript:
+            return f"No transcript content extracted for video '{video_id}'."
+        
+        # Format transcript content
+        formatted_segments = []
+        for entry in transcript:
+            timestamp = f"[{int(entry['start']//60):02d}:{int(entry['start']%60):02d}]"
+            formatted_segments.append(f"{timestamp} {entry['text']}")
+        
+        full_text = " ".join([entry['text'] for entry in transcript])
+        
+        # Calculate statistics
+        word_count = len(full_text.split())
+        duration_minutes = int(transcript[-1]['start']//60) if transcript else 0
+        
+        # Build comprehensive response
+        result = f"""YouTube Video Transcript:
+
+Video: {video_title}
+Video ID: {video_id}
+Language: {language.upper()}
+Duration: ~{duration_minutes} minutes
+Segments: {len(transcript)}
+Word Count: ~{word_count} words
+
+📝 Full Transcript:
+{full_text}
+
+⏰ Timestamped Segments (First 10):
+{chr(10).join(formatted_segments[:10])}
+{'... and ' + str(len(formatted_segments) - 10) + ' more segments' if len(formatted_segments) > 10 else ''}
+
+Video URL: https://www.youtube.com/watch?v={video_id}
+
+✅ Transcript successfully extracted using youtube-transcript-api.
+Note: Quality depends on YouTube's automatic or manual captions."""
+        
+        return result
+        
+    except Exception as e:
+        # Comprehensive error handling
+        error_message = str(e).lower()
+        
+        if "transcriptsdisabled" in error_message or "disabled" in error_message:
+            return f"""YouTube Video Transcript - Transcripts Disabled:
+
+Video: {video_title}
+Video ID: {video_id}
+
+❌ Transcripts are disabled for this video.
+
+The video owner has disabled captions/transcripts.
+
+Alternatives:
+• Try get_video_caption_info() for basic caption metadata
+• Use get_video_details() for video information
+• Look for similar videos with transcripts enabled
+
+Video URL: https://www.youtube.com/watch?v={video_id}"""
+        elif "quota" in error_message:
+            return f"❌ YouTube API quota exceeded. Please try again later."
+        elif "forbidden" in error_message:
+            return f"❌ Access to video '{video_id}' is restricted or private."
+        else:
+            return f"Error extracting transcript for video '{video_id}': {str(e)}"
 # Add a resource for server information
 @mcp.resource("youtube://server/info")
 def get_server_info() -> str:
@@ -1521,6 +1681,7 @@ Available Tools:
 11. get_channel_playlists(channel_input, max_results) - Get playlists from a YouTube channel
 12. get_video_caption_info(video_input, language) - Get available caption/transcript information
 13. evaluate_video_for_knowledge_base(video_input) - Analyze video metadata to help decide if worth adding to knowledge base
+14. get_video_transcript(video_input, language) - Extract actual transcript content from YouTube videos
 
 Supported URL formats:
 - Videos: https://www.youtube.com/watch?v=VIDEO_ID or https://youtu.be/VIDEO_ID
@@ -1546,6 +1707,7 @@ API Quota Usage (per call):
 - get_channel_playlists: 1 unit
 - get_video_caption_info: 50 units (captions API)
 - evaluate_video_for_knowledge_base: 51 units (1 for video details + 50 for captions)
+- get_video_transcript: 1 unit (for video title + external transcript API)
 
 Daily Quota Limit: 10,000 units (default)
 High-usage functions: search_videos (101), get_channel_videos (101), get_video_caption_info (50), evaluate_video_for_knowledge_base (51)
